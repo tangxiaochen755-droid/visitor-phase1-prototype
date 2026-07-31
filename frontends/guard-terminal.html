@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>门卫扫码终端</title>
+<style>
+:root{--primary:#1677FF;--primary-light:#e6f0ff;--success:#52c41a;--warning:#faad14;--danger:#ff4d4f;--text1:rgba(0,0,0,.88);--text2:rgba(0,0,0,.65);--text3:rgba(0,0,0,.45);--bg:#f5f7fa;--card:#fff;--radius:8px;--shadow:0 1px 4px rgba(0,0,0,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text1);font-size:14px;line-height:1.5;min-height:100vh}
+input,select,textarea,button{font-family:inherit;font-size:inherit;outline:none;border:none;background:none}
+button{cursor:pointer}
+.page{display:none;min-height:100vh}.page.active{display:block}
+
+/* Login */
+.login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;background:linear-gradient(135deg,#1677FF,#4096ff)}
+.login-box{width:100%;max-width:400px;background:#fff;border-radius:12px;padding:32px 24px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.login-title{font-size:22px;font-weight:600;text-align:center;margin-bottom:8px}
+.login-sub{font-size:13px;color:var(--text3);text-align:center;margin-bottom:28px}
+.login-company{font-size:20px;color:#fff;text-align:center;margin-bottom:24px;font-weight:600;letter-spacing:2px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.form-input{width:100%;height:44px;border:1px solid #d9d9d9;border-radius:6px;padding:0 12px;font-size:15px;transition:border .2s}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(22,119,255,.1)}
+.remember-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin:12px 0 20px}
+.remember-row input{width:16px;height:16px;accent-color:var(--primary)}
+.login-btn{width:100%;height:44px;background:var(--primary);color:#fff;border-radius:6px;font-size:16px;font-weight:500}
+.login-btn:disabled{opacity:.5}
+
+/* Header */
+.header-card{background:linear-gradient(135deg,#1677FF,#4096ff);padding:20px 16px;color:#fff;display:flex;align-items:center;gap:12px}
+.avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
+.header-phone{font-size:16px;font-weight:500}
+.header-role{font-size:12px;opacity:.8;margin-top:2px}
+.logout-btn{margin-left:auto;font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
+
+/* Module Selection */
+.module-bar{display:flex;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.module-item{flex:1;text-align:center;padding:14px 0;font-size:14px;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s}
+.module-item.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
+
+/* Scan Page */
+.scan-page{display:flex;flex-direction:column;height:calc(100vh - 120px)}
+.scan-camera-area{position:relative;width:100%;max-width:400px;margin:16px auto 0;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#000;flex-shrink:0}
+.scan-camera-area video{width:100%;height:100%;object-fit:cover}
+.scan-camera-area canvas{display:none}
+.scan-overlay{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.scan-frame{width:70%;height:70%;border:2px solid rgba(255,255,255,.6);border-radius:12px;position:relative}
+.scan-frame::before,.scan-frame::after{content:'';position:absolute;width:20px;height:20px;border:3px solid var(--primary)}
+.scan-frame::before{top:-2px;left:-2px;border-right:none;border-bottom:none;border-radius:4px 0 0 0}
+.scan-frame::after{bottom:-2px;right:-2px;border-left:none;border-top:none;border-radius:0 0 4px 0}
+.scan-corner-br{position:absolute;bottom:-2px;right:0;width:20px;height:20px;border-bottom:3px solid var(--primary);border-right:3px solid var(--primary);border-radius:0 0 4px 0}
+.scan-corner-tl{position:absolute;top:-2px;left:0;width:20px;height:20px;border-top:3px solid var(--primary);border-left:3px solid var(--primary);border-radius:4px 0 0 0}
+.scan-line{position:absolute;top:0;left:5%;width:90%;height:2px;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:scanLine 2s linear infinite}
+@keyframes scanLine{0%{top:0}100%{top:100%}}
+.scan-camera-hint{text-align:center;font-size:13px;color:var(--text3);padding:12px 0 4px}
+.scan-no-camera{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+
+.scan-bottom{flex:1;overflow-y:auto;padding:0 16px 16px}
+.scan-result{background:#fff;border-radius:10px;padding:20px;box-shadow:var(--shadow);text-align:left;display:none;margin-top:12px}
+.scan-result.show{display:block}
+.result-status{text-align:center;font-size:18px;font-weight:600;margin-bottom:12px}
+.result-status.success{color:var(--success)}
+.result-status.fail{color:var(--danger)}
+.result-info{font-size:14px;color:var(--text2);line-height:1.8}
+.result-info b{color:var(--text1)}
+.scan-manual-toggle{display:flex;align-items:center;justify-content:center;padding:10px 0;cursor:pointer;color:var(--primary);font-size:13px;gap:4px}
+.scan-manual-toggle:active{opacity:.7}
+.scan-manual-box{background:#fff;border-radius:10px;padding:16px;box-shadow:var(--shadow);margin-top:8px;display:none}
+.scan-manual-box.show{display:block}
+.manual-input-row{display:flex;gap:8px}
+.manual-input-row input{flex:1;height:40px;border:1px solid #d9d9d9;border-radius:6px;padding:0 12px;font-size:14px}
+.manual-input-row input:focus{border-color:var(--primary)}
+.manual-btn{height:40px;padding:0 20px;background:var(--primary);color:#fff;border-radius:6px;font-size:14px;font-weight:500;white-space:nowrap}
+.manual-hint{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.5}
+
+/* Records Page */
+.records-page{padding:16px}
+.stats-row{display:flex;gap:10px;margin-bottom:16px}
+.stat-card{flex:1;background:#fff;border-radius:8px;padding:16px 12px;text-align:center;box-shadow:var(--shadow)}
+.stat-num{font-size:24px;font-weight:600;color:var(--primary)}
+.stat-label{font-size:12px;color:var(--text3);margin-top:4px}
+.stat-card.in .stat-num{color:var(--success)}
+.stat-card.out .stat-num{color:var(--warning)}
+.stat-card.comp .stat-num{color:#722ed1}
+
+/* Filter */
+.filter-bar{background:#fff;border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:var(--shadow)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.filter-row:last-child{margin-bottom:0}
+.filter-input{height:36px;border:1px solid #d9d9d9;border-radius:6px;padding:0 10px;font-size:13px;min-width:0;flex:1}
+.filter-select{height:36px;border:1px solid #d9d9d9;border-radius:6px;padding:0 10px;font-size:13px;background:#fff;min-width:100px}
+
+/* Table */
+.table-wrapper{background:#fff;border-radius:8px;overflow-x:auto;box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#fafafa;font-weight:500;color:var(--text2);white-space:nowrap;padding:10px;text-align:left;border-bottom:1px solid #f0f0f0}
+td{padding:10px;border-bottom:1px solid #f5f5f5;white-space:nowrap}
+tr:hover td{background:rgba(0,0,0,.02)}
+.status-tag{font-size:12px;padding:2px 8px;border-radius:10px}
+.status-visiting{background:#f6ffed;color:#389e0d}
+.status-ended{background:#f5f5f5;color:var(--text3)}
+.empty{text-align:center;padding:40px 0;color:var(--text3);font-size:14px}
+
+/* Toast */
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:6px;font-size:14px;z-index:999;pointer-events:none}
+.toast.success{background:rgba(82,196,26,.9)}
+.toast.error{background:rgba(255,77,79,.9)}
+</style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div id="loginPage" class="page active">
+  <div class="login-page">
+    <div class="login-company">XX科技有限公司</div>
+    <div class="login-box">
+      <div class="login-title">门卫扫码终端</div>
+      <div class="login-sub">请使用门卫账号登录</div>
+      <div class="form-group">
+        <label>手机号</label>
+        <input class="form-input" id="loginPhone" type="tel" maxlength="11" placeholder="请输入手机号">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input class="form-input" id="loginPwd" type="password" placeholder="请输入密码">
+      </div>
+      <div class="remember-row">
+        <input type="checkbox" id="rememberCheck">
+        <label for="rememberCheck">记住密码</label>
+      </div>
+      <button class="login-btn" onclick="doLogin()">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main Page -->
+<div id="mainPage" class="page">
+  <div class="header-card">
+    <div class="avatar">🛡️</div>
+    <div>
+      <div class="header-phone" id="headerPhone"></div>
+      <div class="header-role">门卫</div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+  </div>
+  <div class="module-bar">
+    <div class="module-item active" data-mod="scan" onclick="switchModule('scan')">扫码确认</div>
+    <div class="module-item" data-mod="records" onclick="switchModule('records')">进出记录</div>
+  </div>
+  <div id="mod-scan" class="scan-page">
+    <!-- 摄像头扫码区 -->
+    <div class="scan-camera-area" id="scanCameraArea">
+      <video id="scanVideo" autoplay playsinline></video>
+      <canvas id="scanCanvas"></canvas>
+      <div class="scan-overlay">
+        <div class="scan-frame">
+          <div class="scan-corner-tl"></div>
+          <div class="scan-corner-br"></div>
+          <div class="scan-line"></div>
+        </div>
+      </div>
+    </div>
+    <div class="scan-camera-hint" id="scanCameraHint">将二维码对准框内即可自动识别</div>
+
+    <!-- 底部区域：结果 + 手动输入 -->
+    <div class="scan-bottom">
+      <div class="scan-result" id="scanResult"></div>
+      <div class="scan-manual-toggle" id="manualToggle" onclick="toggleManualInput()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        手动输入码内容
+      </div>
+      <div class="scan-manual-box" id="manualBox">
+        <div class="manual-input-row">
+          <input id="manualCode" placeholder="粘贴或输入访客二维码内容" onkeydown="if(event.key==='Enter')handleManualScan()">
+          <button class="manual-btn" onclick="handleManualScan()">确认</button>
+        </div>
+        <div class="manual-hint">若摄像头无法扫码，可复制访客端二维码下方的码内容粘贴到此处确认</div>
+      </div>
+    </div>
+  </div>
+  <div id="mod-records" class="records-page" style="display:none">
+    <div class="stats-row">
+      <div class="stat-card in"><div class="stat-num" id="statIn">0</div><div class="stat-label">今日来访人数</div></div>
+      <div class="stat-card out"><div class="stat-num" id="statOut">0</div><div class="stat-label">今日出访人数</div></div>
+      <div class="stat-card comp"><div class="stat-num" id="statComp">0</div><div class="stat-label">今日随访总人数</div></div>
+    </div>
+    <div class="filter-bar">
+      <div class="filter-row">
+        <input class="filter-input" id="fVisitorName" placeholder="来访人姓名">
+        <input class="filter-input" id="fVisiteeName" placeholder="被访人姓名">
+        <input class="filter-input" id="fVisiteeDept" placeholder="被访人部门">
+        <input class="filter-input" id="fVisiteePhone" placeholder="被访人手机号">
+      </div>
+      <div class="filter-row">
+        <select class="filter-select" id="fStatus">
+          <option value="">全部状态</option>
+          <option value="visiting">来访中</option>
+          <option value="ended">已结束</option>
+        </select>
+        <select class="filter-select" id="fVisited">
+          <option value="">是否来访：全部</option>
+          <option value="yes">已来访</option>
+          <option value="no">未来访</option>
+        </select>
+        <select class="filter-select" id="fExited">
+          <option value="">是否出访：全部</option>
+          <option value="yes">已出访</option>
+          <option value="no">未出访</option>
+        </select>
+        <input class="filter-input" type="date" id="fVisitDate" title="来访日期">
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr><th>来访人</th><th>手机号</th><th>被访人</th><th>部门</th><th>被访人电话</th><th>是否来访</th><th>来访时间</th><th>是否出访</th><th>出访时间</th><th>同行人</th><th>车辆</th><th>状态</th><th>状态更新时间</th></tr>
+        </thead>
+        <tbody id="recordsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+// ====== Data Layer ======
+const KEYS = { VISITORS: 'vms_visitors', VISITEES: 'vms_visitees', APPLICATIONS: 'vms_applications', SCAN_RECORDS: 'vms_scan_records', GUARDS: 'vms_guards' };
+function getApps() { return JSON.parse(localStorage.getItem(KEYS.APPLICATIONS) || '[]'); }
+function setApps(a) { localStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(a)); }
+function getGuards() { return JSON.parse(localStorage.getItem(KEYS.GUARDS) || '[]'); }
+function getScanRecords() { return JSON.parse(localStorage.getItem(KEYS.SCAN_RECORDS) || '[]'); }
+function setScanRecords(r) { localStorage.setItem(KEYS.SCAN_RECORDS, JSON.stringify(r)); }
+function initData() {
+  if (!localStorage.getItem(KEYS.GUARDS)) {
+    localStorage.setItem(KEYS.GUARDS, JSON.stringify([{ phone: '13900001001', password: '123456', name: '门卫张' }]));
+  }
+  if (!localStorage.getItem(KEYS.APPLICATIONS)) localStorage.setItem(KEYS.APPLICATIONS, '[]');
+  if (!localStorage.getItem(KEYS.SCAN_RECORDS)) localStorage.setItem(KEYS.SCAN_RECORDS, '[]');
+  if (!localStorage.getItem(KEYS.VISITEES)) {
+    localStorage.setItem(KEYS.VISITEES, JSON.stringify([
+      { phone: '13800001001', password: '123456', name: '张伟', department: '技术部' },
+      { phone: '13800001002', password: '123456', name: '李娜', department: '市场部' },
+      { phone: '13800001003', password: '123456', name: '王芳', department: '行政部' },
+      { phone: '13800001004', password: '123456', name: '刘洋', department: '财务部' },
+      { phone: '13800001005', password: '123456', name: '陈静', department: '人事部' },
+      { phone: '13800001006', password: '123456', name: '赵磊', department: '研发部' },
+    ]));
+  }
+  if (!localStorage.getItem(KEYS.VISITORS)) localStorage.setItem(KEYS.VISITORS, '[]');
+}
+
+let currentUser = null;
+
+// ====== Login ======
+function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  const guards = getGuards();
+  const guard = guards.find(g => g.phone === phone && g.password === pwd);
+  if (!guard) return showToast('手机号或密码错误', 'error');
+  currentUser = guard;
+  if (document.getElementById('rememberCheck').checked) {
+    localStorage.setItem('vms_guard_remember', JSON.stringify({ phone, pwd }));
+  } else {
+    localStorage.removeItem('vms_guard_remember');
+  }
+  showMain();
+}
+function doLogout() {
+  stopCamera();
+  currentUser = null;
+  document.getElementById('loginPage').classList.add('active');
+  document.getElementById('mainPage').classList.remove('active');
+}
+
+// ====== Main ======
+function showMain() {
+  document.getElementById('loginPage').classList.remove('active');
+  document.getElementById('mainPage').classList.add('active');
+  document.getElementById('headerPhone').textContent = (currentUser.name || currentUser.phone) + ' | ' + currentUser.phone;
+  // Clear previous scan result
+  const sr = document.getElementById('scanResult');
+  if (sr) { sr.className = 'scan-result'; sr.style.display = 'none'; }
+  const mc = document.getElementById('manualCode');
+  if (mc) mc.value = '';
+  switchModule('scan');
+}
+function switchModule(mod) {
+  document.querySelectorAll('.module-item').forEach(m => m.classList.toggle('active', m.dataset.mod === mod));
+  document.getElementById('mod-scan').style.display = mod === 'scan' ? 'block' : 'none';
+  document.getElementById('mod-records').style.display = mod === 'records' ? 'block' : 'none';
+  if (mod === 'scan') { checkExpired(); startCamera(); }
+  else stopCamera();
+  if (mod === 'records') { checkExpired(); renderRecords(); }
+}
+
+// ====== Camera Scan ======
+let videoStream = null;
+let scanAnimId = null;
+let lastScanResult = '';
+let lastScanTime = 0;
+
+function startCamera() {
+  const video = document.getElementById('scanVideo');
+  const hint = document.getElementById('scanCameraHint');
+  if (videoStream) { resumeScanLoop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    hint.textContent = '浏览器不支持摄像头，请使用手动输入';
+    document.getElementById('scanCameraArea').innerHTML = '<div class="scan-no-camera">摄像头不可用<br>请点击下方"手动输入码内容"</div>';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } } })
+    .then(stream => {
+      videoStream = stream;
+      video.srcObject = stream;
+      video.play();
+      hint.textContent = '将二维码对准框内即可自动识别';
+      resumeScanLoop();
+    })
+    .catch(err => {
+      console.warn('Camera error:', err);
+      hint.textContent = '无法打开摄像头，请使用手动输入';
+      document.getElementById('scanCameraArea').innerHTML = '<div class="scan-no-camera">摄像头权限被拒绝或不可用<br>请点击下方"手动输入码内容"</div>';
+    });
+}
+
+function stopCamera() {
+  if (scanAnimId) { cancelAnimationFrame(scanAnimId); scanAnimId = null; }
+  if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+}
+
+function resumeScanLoop() {
+  if (scanAnimId) return;
+  const video = document.getElementById('scanVideo');
+  const canvas = document.getElementById('scanCanvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  function tick() {
+    if (!videoStream) return;
+    scanAnimId = requestAnimationFrame(tick);
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    if (typeof jsQR !== 'undefined') {
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data) {
+        const now = Date.now();
+        // Debounce: same result within 3s, skip
+        if (code.data === lastScanResult && now - lastScanTime < 3000) return;
+        lastScanResult = code.data;
+        lastScanTime = now;
+        processScanCode(code.data);
+      }
+    }
+  }
+  tick();
+}
+
+function toggleManualInput() {
+  const box = document.getElementById('manualBox');
+  const isOpen = box.classList.contains('show');
+  box.classList.toggle('show', !isOpen);
+}
+
+// ====== Manual Scan ======
+function handleManualScan() {
+  const code = document.getElementById('manualCode').value.trim();
+  if (!code) return showToast('请输入二维码内容', 'error');
+  processScanCode(code);
+}
+
+function processScanCode(code) {
+  const resultBox = document.getElementById('scanResult');
+  resultBox.className = 'scan-result';
+  resultBox.style.display = 'none';
+
+  // Parse code: VMS_VISIT_{appId}_{expireTime} or VMS_EXIT_{appId}_{expireTime}
+  // Use indexOf to handle appId that might contain underscores
+  if (!code.startsWith('VMS_')) {
+    showScanResult(false, '无效的二维码，不是访客系统的码');
+    return;
+  }
+  const typeStr = code.startsWith('VMS_VISIT_') ? 'VISIT' : (code.startsWith('VMS_EXIT_') ? 'EXIT' : '');
+  if (!typeStr) {
+    showScanResult(false, '无效的二维码，无法识别扫码类型');
+    return;
+  }
+  const payload = code.slice(typeStr === 'VISIT' ? 'VMS_VISIT_'.length : 'VMS_EXIT_'.length); // appId_expireTime
+  const lastUnderscore = payload.lastIndexOf('_');
+  if (lastUnderscore < 1) {
+    showScanResult(false, '二维码格式错误');
+    return;
+  }
+  const appId = payload.slice(0, lastUnderscore);
+  const expireTime = parseInt(payload.slice(lastUnderscore + 1));
+
+  // Check expiry
+  if (Date.now() > expireTime) {
+    showScanResult(false, '二维码已过期，请让访客重新打开');
+    return;
+  }
+
+  const apps = getApps();
+  const app = apps.find(a => a.id === appId);
+  if (!app) {
+    showScanResult(false, '未找到对应的访问申请记录');
+    return;
+  }
+
+  // Check today's date
+  const today = new Date().toISOString().slice(0, 10);
+  if (app.expectedDate !== today) {
+    showScanResult(false, `该预约的到访日期为${app.expectedDate}，非今日预约`);
+    return;
+  }
+
+  if (type === 'VISIT') {
+    if (app.status !== 'pending_visit') {
+      showScanResult(false, `该访问申请当前状态为"${STATUS_MAP[app.status] || app.status}"，不可办理来访确认`);
+      return;
+    }
+    // Confirm visit
+    const idx = apps.findIndex(a => a.id === appId);
+    apps[idx].status = 'visiting';
+    apps[idx].visitTime = new Date().toISOString();
+    apps[idx].statusUpdateTime = new Date().toISOString();
+    setApps(apps);
+    // Add scan record
+    let records = getScanRecords();
+    records.push({
+      id: 'SR' + Date.now(),
+      applicationId: appId,
+      type: 'visit',
+      scanTime: new Date().toISOString(),
+      companionCount: app.companions ? app.companions.length : 0,
+      carCount: app.carPlates ? app.carPlates.length : 0
+    });
+    setScanRecords(records);
+    const compCount = app.companions ? app.companions.length : 0;
+    const carCount = app.carPlates ? app.carPlates.length : 0;
+    showScanResult(true, `${app.visitorName} 来访成功！随访${compCount}人，车辆${carCount}辆`, app, type);
+  } else if (type === 'EXIT') {
+    if (app.status !== 'visiting') {
+      showScanResult(false, `该访问申请当前状态为"${STATUS_MAP[app.status] || app.status}"，不可办理出访确认`);
+      return;
+    }
+    const idx = apps.findIndex(a => a.id === appId);
+    apps[idx].status = 'ended';
+    apps[idx].exitTime = new Date().toISOString();
+    apps[idx].statusUpdateTime = new Date().toISOString();
+    setApps(apps);
+    // Add scan record
+    let records = getScanRecords();
+    records.push({
+      id: 'SR' + Date.now(),
+      applicationId: appId,
+      type: 'exit',
+      scanTime: new Date().toISOString(),
+      companionCount: app.companions ? app.companions.length : 0,
+      carCount: app.carPlates ? app.carPlates.length : 0
+    });
+    setScanRecords(records);
+    showScanResult(true, `${app.visitorName} 出访成功！`, app, type);
+  }
+}
+
+function checkExpired() {
+  let apps = getApps();
+  const today = new Date().toISOString().slice(0, 10);
+  let changed = false;
+  apps.forEach(a => {
+    if (['pending_review', 'review_failed', 'pending_visit'].includes(a.status)) {
+      const end = a.timeSlot === 'afternoon' ? a.expectedDate + 'T18:00' : a.expectedDate + 'T12:00';
+      if (new Date(end) < new Date()) { a.status = 'expired'; a.statusUpdateTime = new Date().toISOString(); changed = true; }
+    }
+  });
+  if (changed) setApps(apps);
+}
+
+const STATUS_MAP = { pending_review: '待审核', review_failed: '审核失败', pending_visit: '待来访', visiting: '来访中', ended: '已结束', expired: '已失效' };
+
+function showScanResult(success, msg, app, type) {
+  const box = document.getElementById('scanResult');
+  let html = `<div class="result-status ${success ? 'success' : 'fail'}">${success ? '✓ ' + (type === 'visit' ? '来访确认成功' : '出访确认成功') : '✗ 扫码失败'}</div>`;
+  html += `<div class="result-info">${msg}</div>`;
+  if (app) {
+    html += `<div class="result-info" style="margin-top:8px">
+      来访人：<b>${app.visitorName}</b><br>
+      手机号：<b>${app.visitorPhone}</b><br>
+      被访人：<b>${app.visiteeName}（${app.visiteeDept}）</b><br>
+      来访目的：<b>${app.visitPurpose === '其他' ? app.visitPurposeOther : app.visitPurpose}</b>
+    </div>`;
+  }
+  box.innerHTML = html;
+  box.className = 'scan-result show';
+  // Play audio hint
+  if (success) speak(msg);
+}
+
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN'; u.rate = 1;
+    speechSynthesis.speak(u);
+  }
+}
+
+// ====== Records ======
+function renderRecords() {
+  const visitDateVal = document.getElementById('fVisitDate').value;
+  const filterDate = visitDateVal || new Date().toISOString().slice(0, 10);
+  const scanRecords = getScanRecords().filter(r => r.scanTime.startsWith(filterDate));
+  const apps = getApps();
+
+  // Stats
+  const visitCount = scanRecords.filter(r => r.type === 'visit').length;
+  const exitCount = scanRecords.filter(r => r.type === 'exit').length;
+  const totalCompanion = scanRecords.filter(r => r.type === 'visit').reduce((s, r) => s + r.companionCount, 0);
+  document.getElementById('statIn').textContent = visitCount;
+  document.getElementById('statOut').textContent = exitCount;
+  document.getElementById('statComp').textContent = totalCompanion;
+
+  // Filter
+  const fVisitorName = document.getElementById('fVisitorName').value.trim().toLowerCase();
+  const fVisiteeName = document.getElementById('fVisiteeName').value.trim().toLowerCase();
+  const fVisiteeDept = document.getElementById('fVisiteeDept').value.trim().toLowerCase();
+  const fVisiteePhone = document.getElementById('fVisiteePhone').value.trim();
+  const fStatus = document.getElementById('fStatus').value;
+  const fVisited = document.getElementById('fVisited').value;
+  const fExited = document.getElementById('fExited').value;
+
+  let filtered = apps.filter(a => {
+    if (a.status !== 'visiting' && a.status !== 'ended') return false;
+    const hasVisited = !!(a.visitTime);
+    const hasExited = !!(a.exitTime);
+    // Date filter: show apps whose visitTime or exitTime falls on filterDate
+    const visitOnDate = a.visitTime && a.visitTime.startsWith(filterDate);
+    const exitOnDate = a.exitTime && a.exitTime.startsWith(filterDate);
+    if (!visitOnDate && !exitOnDate) return false;
+    if (fVisitorName && !a.visitorName.toLowerCase().includes(fVisitorName)) return false;
+    if (fVisiteeName && !a.visiteeName.toLowerCase().includes(fVisiteeName)) return false;
+    if (fVisiteeDept && !a.visiteeDept.toLowerCase().includes(fVisiteeDept)) return false;
+    if (fVisiteePhone && !a.visiteePhone.includes(fVisiteePhone)) return false;
+    if (fStatus && a.status !== fStatus) return false;
+    if (fVisited === 'yes' && !hasVisited) return false;
+    if (fVisited === 'no' && hasVisited) return false;
+    if (fExited === 'yes' && !hasExited) return false;
+    if (fExited === 'no' && hasExited) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('recordsBody');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="13" class="empty">暂无记录</td></tr>';
+    return;
+  }
+    tbody.innerHTML = filtered.map(a => {
+      const compCount = a.companions ? a.companions.length : 0;
+      const carCount = a.carPlates ? a.carPlates.length : 0;
+      const statusCls = a.status === 'visiting' ? 'status-visiting' : 'status-ended';
+      const hasVisited = !!a.visitTime;
+      const hasExited = !!a.exitTime;
+      const visitedTag = hasVisited
+        ? '<span class="status-tag status-visiting" style="font-size:11px">是</span>'
+        : '<span style="color:var(--text-quaternary)">否</span>';
+      const exitedTag = hasExited
+        ? '<span class="status-tag status-ended" style="font-size:11px">是</span>'
+        : '<span style="color:var(--text-quaternary)">否</span>';
+      const visitTimeStr = hasVisited ? a.visitTime.replace('T',' ').slice(0,16) : '-';
+      const exitTimeStr = hasExited ? a.exitTime.replace('T',' ').slice(0,16) : '-';
+      return `<tr>
+        <td>${a.visitorName}</td>
+        <td>${a.visitorPhone}</td>
+        <td>${a.visiteeName}</td>
+        <td>${a.visiteeDept}</td>
+        <td>${a.visiteePhone}</td>
+        <td>${visitedTag}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${visitTimeStr}</td>
+        <td>${exitedTag}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${exitTimeStr}</td>
+        <td>${compCount}</td>
+        <td>${carCount}</td>
+        <td><span class="status-tag ${statusCls}">${STATUS_MAP[a.status]}</span></td>
+        <td style="color:var(--text-tertiary);font-size:12px">${a.statusUpdateTime ? a.statusUpdateTime.replace('T',' ').slice(0,16) : '-'}</td>
+      </tr>`;
+  }).join('');
+}
+
+// Auto-refresh filters
+document.querySelectorAll('.filter-input, .filter-select').forEach(el => {
+  el.addEventListener('input', renderRecords);
+  el.addEventListener('change', renderRecords);
+});
+
+// ====== Toast ======
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ====== Init ======
+initData();
+// Set default date filter to today
+document.getElementById('fVisitDate').value = new Date().toISOString().slice(0, 10);
+const saved = localStorage.getItem('vms_guard_remember');
+if (saved) {
+  const { phone, pwd } = JSON.parse(saved);
+  document.getElementById('loginPhone').value = phone || '';
+  document.getElementById('loginPwd').value = pwd || '';
+  document.getElementById('rememberCheck').checked = true;
+}
+</script>
+</body>
+</html>

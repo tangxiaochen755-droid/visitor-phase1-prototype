@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>被访人审批系统</title>
+<style>
+:root{--primary:#1677FF;--primary-light:#e6f0ff;--success:#52c41a;--warning:#faad14;--danger:#ff4d4f;--text1:rgba(0,0,0,.88);--text2:rgba(0,0,0,.65);--text3:rgba(0,0,0,.45);--bg:#f5f7fa;--card:#fff;--radius:8px;--shadow:0 1px 4px rgba(0,0,0,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;background:var(--bg);color:var(--text1);font-size:14px;line-height:1.5;min-height:100vh}
+input,select,textarea,button{font-family:inherit;font-size:inherit;outline:none;border:none;background:none}
+button{cursor:pointer}
+.page{display:none;min-height:100vh}.page.active{display:block}
+
+.login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;background:linear-gradient(135deg,#1677FF,#4096ff)}
+.login-box{width:100%;max-width:360px;background:#fff;border-radius:12px;padding:32px 24px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.login-title{font-size:22px;font-weight:600;text-align:center;margin-bottom:8px}
+.login-sub{font-size:13px;color:var(--text3);text-align:center;margin-bottom:28px}
+.login-company{font-size:20px;color:#fff;text-align:center;margin-bottom:24px;font-weight:600;letter-spacing:2px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.form-input{width:100%;height:44px;border:1px solid #d9d9d9;border-radius:6px;padding:0 12px;font-size:15px;transition:border .2s}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(22,119,255,.1)}
+.remember-row{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin:12px 0 20px}
+.remember-row input{width:16px;height:16px;accent-color:var(--primary)}
+.login-btn{width:100%;height:44px;background:var(--primary);color:#fff;border-radius:6px;font-size:16px;font-weight:500}
+
+.header-card{background:linear-gradient(135deg,#1677FF,#4096ff);padding:20px 16px;color:#fff;position:relative}
+.header-info{display:flex;align-items:center;gap:12px}
+.avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
+.header-phone{font-size:16px;font-weight:500}
+.header-dept{font-size:12px;opacity:.8;margin-top:2px}
+.logout-btn{position:absolute;top:16px;right:16px;font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
+
+.search-section{padding:16px 16px 0}
+.search-bar{display:flex;align-items:center;height:40px;background:#fff;border:1px solid #d9d9d9;border-radius:6px;padding:0 12px;cursor:pointer;transition:border .2s}
+.search-bar:active{border-color:var(--primary)}
+.search-bar-icon{width:16px;height:16px;color:var(--text3);margin-right:8px;flex-shrink:0}
+.search-bar-text{font-size:14px;color:var(--text3)}
+
+/* Search Page */
+.search-page{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:50;display:none;flex-direction:column}
+.search-page.active{display:flex}
+.search-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.search-back{font-size:18px;color:var(--text2);padding:4px;cursor:pointer;flex-shrink:0}
+.search-input-wrap{flex:1;position:relative}
+.search-page-input{width:100%;height:36px;border:none;background:var(--bg);border-radius:6px;padding:0 12px;font-size:14px}
+.search-page-input:focus{outline:none}
+.search-btn{height:36px;padding:0 16px;background:var(--primary);color:#fff;border-radius:6px;font-size:14px;font-weight:500;flex-shrink:0;cursor:pointer}
+.search-page-body{flex:1;overflow-y:auto;padding:16px}
+.search-result-section{margin-bottom:16px}
+.search-result-title{font-size:13px;color:var(--text3);margin-bottom:8px;font-weight:500}
+.search-person-card{background:#fff;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);cursor:pointer;transition:background .2s}
+.search-person-card:active{background:var(--primary-light)}
+.search-person-avatar{width:40px;height:40px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;color:var(--primary);font-weight:600;font-size:16px;flex-shrink:0}
+.search-person-info{flex:1;min-width:0}
+.search-person-name{font-size:15px;font-weight:600;color:var(--text1)}
+.search-person-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.search-person-count{font-size:12px;color:var(--primary);background:var(--primary-light);padding:2px 8px;border-radius:10px;flex-shrink:0}
+.search-history{padding:0 0 8px}
+.search-history-title{font-size:13px;color:var(--text3);margin-bottom:8px}
+.search-history-tag{display:inline-block;padding:4px 12px;background:#fff;border-radius:16px;font-size:13px;color:var(--text2);margin:0 6px 8px 0;box-shadow:var(--shadow);cursor:pointer}
+.search-history-tag:active{background:var(--primary-light);color:var(--primary)}
+
+.calendar{background:var(--card);border-radius:var(--radius);padding:16px;margin:12px 16px;box-shadow:var(--shadow)}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-header span{font-size:15px;font-weight:600}
+.cal-nav{padding:4px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;color:var(--text2);background:#fff}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--text3);margin-bottom:4px}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:2px}
+.cal-day{height:36px;line-height:36px;border-radius:50%;font-size:13px;color:var(--text2);position:relative;cursor:pointer}
+.cal-day.today{font-weight:600;color:var(--primary)}
+.cal-day.has-visit::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.cal-day.selected{background:var(--primary);color:#fff}
+.cal-day.selected::after{background:#fff}
+.cal-day.other-month{color:var(--text3);opacity:.4}
+
+.status-filter{display:flex;gap:6px;padding:0 16px;margin-bottom:12px;flex-wrap:wrap}
+.status-tag{padding:4px 12px;border-radius:16px;font-size:12px;background:#fff;border:1px solid #d9d9d9;color:var(--text2);cursor:pointer;transition:all .2s}
+.status-tag.active{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.status-tag .count{font-weight:600;margin-left:2px}
+
+.record-list{padding:0 16px 20px}
+.record-card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:10px;box-shadow:var(--shadow)}
+.record-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.record-date{font-size:15px;font-weight:600}
+.record-status{font-size:12px;padding:3px 10px;border-radius:10px;font-weight:500}
+.status-pending_review{background:#fff7e6;color:#d48806}
+.status-review_failed{background:#fff2f0;color:#cf1322}
+.status-pending_visit{background:var(--primary-light);color:var(--primary)}
+.status-visiting{background:#f6ffed;color:#389e0d}
+.status-ended{background:#f5f5f5;color:var(--text3)}
+.status-expired{background:#f5f5f5;color:var(--text3)}
+.record-info{font-size:13px;color:var(--text2);line-height:1.8}
+.record-info span{color:var(--text1);font-weight:500}
+.record-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.action-btn{padding:6px 16px;border-radius:6px;font-size:13px;font-weight:500}
+.action-primary{background:var(--primary);color:#fff}
+.action-success{background:var(--success);color:#fff}
+.action-danger{background:var(--danger);color:#fff}
+.action-outline{border:1px solid var(--primary);color:var(--primary);background:#fff}
+
+.modal-mask{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-end;justify-content:center}
+.modal-mask.show{display:flex}
+.modal-box{background:#fff;border-radius:12px 12px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px 16px 30px}
+.modal-title{font-size:16px;font-weight:600;text-align:center;margin-bottom:16px;position:relative}
+.modal-close{position:absolute;right:0;top:0;font-size:20px;color:var(--text3);cursor:pointer}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
+.form-input{width:100%;height:40px;border:1px solid #d9d9d9;border-radius:6px;padding:0 12px;font-size:14px;transition:border .2s}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(22,119,255,.1)}
+textarea.form-input{height:80px;padding:8px 12px;resize:vertical}
+.modal-btns{display:flex;gap:10px;margin-top:20px}
+.modal-btns button{flex:1;height:44px;border-radius:6px;font-size:15px;font-weight:500}
+.btn-approve{background:var(--success);color:#fff}
+.btn-reject{background:var(--danger);color:#fff}
+.btn-cancel{background:#f5f5f5;color:var(--text2)}
+
+.detail-grid{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:14px}
+.detail-label{color:var(--text3);white-space:nowrap}
+.detail-value{color:var(--text1);font-weight:500;word-break:break-all}
+
+.empty{text-align:center;padding:40px 0;color:var(--text3);font-size:14px}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:6px;font-size:14px;z-index:999;pointer-events:none}
+.toast.success{background:rgba(82,196,26,.9)}
+</style>
+</head>
+<body>
+
+<!-- Login Page -->
+<div id="loginPage" class="page active">
+  <div class="login-page">
+    <div class="login-company">XX科技有限公司</div>
+    <div class="login-box">
+      <div class="login-title">被访人审批</div>
+      <div class="login-sub">请使用被访人账号登录</div>
+      <div class="form-group">
+        <label>手机号</label>
+        <input class="form-input" id="loginPhone" type="tel" maxlength="11" placeholder="请输入手机号">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input class="form-input" id="loginPwd" type="password" placeholder="请输入密码">
+      </div>
+      <div class="remember-row">
+        <input type="checkbox" id="rememberCheck">
+        <label for="rememberCheck">记住密码</label>
+      </div>
+      <button class="login-btn" onclick="doLogin()">登录</button>
+      <div style="margin-top:16px;font-size:12px;color:var(--text3);text-align:center">
+        预置账号：张伟 13800001001 / 李娜 13800001002 / 王芳 13800001003<br>密码：123456
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main Page -->
+<div id="mainPage" class="page">
+  <div class="header-card">
+    <div class="header-info">
+      <div class="avatar">👤</div>
+      <div>
+        <div class="header-phone" id="headerName"></div>
+        <div class="header-dept" id="headerDept"></div>
+      </div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+  </div>
+  <div class="search-section">
+    <div class="search-bar" onclick="openSearchPage()">
+      <svg class="search-bar-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+      <span class="search-bar-text">搜索来访人姓名或手机号</span>
+    </div>
+  </div>
+  <div class="calendar" id="calendarBox"></div>
+  <div class="status-filter" id="statusFilter"></div>
+  <div class="record-list" id="recordList"></div>
+</div>
+
+<!-- Search Page -->
+<div class="search-page" id="searchPage">
+  <div class="search-header">
+    <div class="search-back" onclick="closeSearchPage()">&larr;</div>
+    <div class="search-input-wrap">
+      <input class="search-page-input" id="searchPageInput" type="search" placeholder="输入来访人姓名或手机号" onkeydown="if(event.key==='Enter')doSearch()">
+    </div>
+    <button class="search-btn" onclick="doSearch()">搜索</button>
+  </div>
+  <div class="search-page-body" id="searchPageBody">
+    <div id="searchHistory"></div>
+    <div id="searchResults"></div>
+  </div>
+</div>
+
+<!-- Review Modal -->
+<div class="modal-mask" id="reviewModal">
+  <div class="modal-box">
+    <div class="modal-title">审核来访申请<button class="modal-close" onclick="closeReviewModal()">&times;</button></div>
+    <div id="reviewDetail"></div>
+    <div id="rejectSection" style="display:none">
+      <div class="form-group">
+        <label>拒绝原因（必填）</label>
+        <textarea class="form-input" id="rejectReason" placeholder="请输入拒绝原因"></textarea>
+      </div>
+    </div>
+    <div class="modal-btns" id="reviewBtns">
+      <button class="btn-cancel" onclick="closeReviewModal()">取消</button>
+      <button class="btn-reject" onclick="showRejectInput()">拒绝</button>
+      <button class="btn-approve" onclick="approveApp()">通过</button>
+    </div>
+    <div class="modal-btns" id="rejectBtns" style="display:none">
+      <button class="btn-cancel" onclick="closeReviewModal()">取消</button>
+      <button class="btn-reject" onclick="confirmReject()">确认拒绝</button>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-mask" id="detailModal">
+  <div class="modal-box">
+    <div class="modal-title">申请详情<button class="modal-close" onclick="closeDetailModal()">&times;</button></div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+// ====== Data Layer ======
+const KEYS = { VISITORS: 'vms_visitors', VISITEES: 'vms_visitees', APPLICATIONS: 'vms_applications', SCAN_RECORDS: 'vms_scan_records', GUARDS: 'vms_guards' };
+const STATUS_MAP = { pending_review: '待审核', review_failed: '审核失败', pending_visit: '待来访', visiting: '来访中', ended: '已结束', expired: '已失效' };
+const STATUS_LIST = ['pending_review', 'review_failed', 'pending_visit', 'visiting', 'ended', 'expired'];
+
+function initData() {
+  if (!localStorage.getItem(KEYS.VISITEES)) {
+    localStorage.setItem(KEYS.VISITEES, JSON.stringify([
+      { phone: '13800001001', password: '123456', name: '张伟', department: '技术部' },
+      { phone: '13800001002', password: '123456', name: '李娜', department: '市场部' },
+      { phone: '13800001003', password: '123456', name: '王芳', department: '行政部' },
+      { phone: '13800001004', password: '123456', name: '刘洋', department: '财务部' },
+      { phone: '13800001005', password: '123456', name: '陈静', department: '人事部' },
+      { phone: '13800001006', password: '123456', name: '赵磊', department: '研发部' },
+    ]));
+  }
+  if (!localStorage.getItem(KEYS.APPLICATIONS)) localStorage.setItem(KEYS.APPLICATIONS, '[]');
+  if (!localStorage.getItem(KEYS.SCAN_RECORDS)) localStorage.setItem(KEYS.SCAN_RECORDS, '[]');
+  if (!localStorage.getItem(KEYS.GUARDS)) localStorage.setItem(KEYS.GUARDS, JSON.stringify([{ phone: '13900001001', password: '123456', name: '门卫张' }]));
+  if (!localStorage.getItem(KEYS.VISITORS)) localStorage.setItem(KEYS.VISITORS, '[]');
+}
+function getApps() { return JSON.parse(localStorage.getItem(KEYS.APPLICATIONS) || '[]'); }
+function setApps(a) { localStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(a)); }
+function getVisitees() { return JSON.parse(localStorage.getItem(KEYS.VISITEES) || '[]'); }
+
+function checkExpired() {
+  let apps = getApps();
+  let changed = false;
+  apps.forEach(a => {
+    if (['pending_review', 'review_failed', 'pending_visit'].includes(a.status)) {
+      const end = a.timeSlot === 'afternoon' ? a.expectedDate + 'T18:00' : a.expectedDate + 'T12:00';
+      if (new Date(end) < new Date()) { a.status = 'expired'; a.statusUpdateTime = new Date().toISOString(); changed = true; }
+    }
+  });
+  if (changed) setApps(apps);
+}
+
+let currentUser = null;
+let calYear, calMonth, calSelectedDate;
+let selectedStatus = '';
+let reviewingAppId = null;
+
+// ====== Login ======
+function doLogin() {
+  const phone = document.getElementById('loginPhone').value.trim();
+  const pwd = document.getElementById('loginPwd').value;
+  const visitees = getVisitees();
+  const user = visitees.find(v => v.phone === phone && v.password === pwd);
+  if (!user) return showToast('手机号或密码错误');
+  currentUser = user;
+  if (document.getElementById('rememberCheck').checked) {
+    localStorage.setItem('vms_visitee_remember', JSON.stringify({ phone, pwd }));
+  } else {
+    localStorage.removeItem('vms_visitee_remember');
+  }
+  showMain();
+}
+function doLogout() {
+  currentUser = null;
+  document.getElementById('loginPage').classList.add('active');
+  document.getElementById('mainPage').classList.remove('active');
+}
+
+// ====== Main ======
+function showMain() {
+  document.getElementById('loginPage').classList.remove('active');
+  document.getElementById('mainPage').classList.add('active');
+  document.getElementById('headerName').textContent = currentUser.name;
+  document.getElementById('headerDept').textContent = currentUser.department + ' | ' + currentUser.phone;
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  calSelectedDate = now.toISOString().slice(0, 10);
+  renderCalendar();
+  renderStatusFilter();
+  renderRecords();
+}
+
+// ====== Calendar ======
+function renderCalendar() {
+  const box = document.getElementById('calendarBox');
+  const today = new Date().toISOString().slice(0, 10);
+  const apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const visitDates = {};
+  apps.forEach(a => { visitDates[a.expectedDate] = true; });
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const startWeekday = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  let html = '<div class="cal-header"><button class="cal-nav" onclick="calPrev()">&lt;</button><span>' + calYear + '年' + (calMonth + 1) + '月</span><button class="cal-nav" onclick="calNext()">&gt;</button></div>';
+  html += '<div class="cal-weekdays">';
+  ['日','一','二','三','四','五','六'].forEach(d => html += '<div>' + d + '</div>');
+  html += '</div><div class="cal-days">';
+
+  const prevMonthDays = new Date(calYear, calMonth, 0).getDate();
+  for (let i = startWeekday - 1; i >= 0; i--) {
+    html += '<div class="cal-day other-month">' + (prevMonthDays - i) + '</div>';
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    const dateStr = calYear + '-' + String(calMonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const cls = [];
+    if (dateStr === today) cls.push('today');
+    if (visitDates[dateStr]) cls.push('has-visit');
+    if (dateStr === calSelectedDate) cls.push('selected');
+    html += '<div class="cal-day ' + cls.join(' ') + '" onclick="selectCalDate(\'' + dateStr + '\')">' + d + '</div>';
+  }
+  const remaining = 7 - ((startWeekday + totalDays) % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) html += '<div class="cal-day other-month">' + i + '</div>';
+  }
+  html += '</div>';
+  box.innerHTML = html;
+}
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+function selectCalDate(date) { calSelectedDate = date; renderCalendar(); renderRecords(); }
+
+// ====== Status Filter ======
+function renderStatusFilter() {
+  checkExpired();
+  const apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const counts = {};
+  STATUS_LIST.forEach(s => counts[s] = 0);
+  apps.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+  let html = '<div class="status-tag ' + (selectedStatus === '' ? 'active' : '') + '" onclick="filterStatus(\'\')">全部<span class="count">' + apps.length + '</span></div>';
+  STATUS_LIST.forEach(s => {
+    html += '<div class="status-tag ' + (selectedStatus === s ? 'active' : '') + '" onclick="filterStatus(\'' + s + '\')">' + STATUS_MAP[s] + '<span class="count">' + counts[s] + '</span></div>';
+  });
+  document.getElementById('statusFilter').innerHTML = html;
+}
+function filterStatus(status) { selectedStatus = status; renderStatusFilter(); renderRecords(); }
+
+// ====== Records ======
+function renderRecords() {
+  checkExpired();
+  let apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  if (calSelectedDate) apps = apps.filter(a => a.expectedDate === calSelectedDate);
+  if (selectedStatus) apps = apps.filter(a => a.status === selectedStatus);
+
+  apps.sort((a, b) => {
+    if (a.status === 'pending_review' && b.status !== 'pending_review') return -1;
+    if (a.status !== 'pending_review' && b.status === 'pending_review') return 1;
+    return b.expectedDate.localeCompare(a.expectedDate);
+  });
+
+  const box = document.getElementById('recordList');
+  if (apps.length === 0) { box.innerHTML = '<div class="empty">暂无来访申请记录</div>'; return; }
+
+  box.innerHTML = apps.map(a => {
+    const compCount = a.companions ? a.companions.length : 0;
+    let actions = '';
+    if (a.status === 'pending_review') {
+      actions = '<button class="action-btn action-success" onclick="openReview(\'' + a.id + '\')">审核</button><button class="action-btn action-outline" onclick="viewDetail(\'' + a.id + '\')">详情</button>';
+    } else {
+      actions = '<button class="action-btn action-outline" onclick="viewDetail(\'' + a.id + '\')">详情</button>';
+    }
+    let failInfo = '';
+    if (a.status === 'review_failed' && a.failReason) failInfo = '<br>拒绝原因：<span style="color:var(--danger)">' + a.failReason + '</span>';
+    return '<div class="record-card"><div class="record-top"><span class="record-date">' + a.expectedDate + ' ' + (a.timeSlot === 'morning' ? '上午' : '下午') + '</span><span class="record-status status-' + a.status + '">' + STATUS_MAP[a.status] + '</span></div><div class="record-info">来访人：<span>' + a.visitorName + '</span> | 手机号：<span>' + a.visitorPhone + '</span><br>来访目的：<span>' + (a.visitPurpose === '其他' ? a.visitPurposeOther : a.visitPurpose) + '</span> | 同行：<span>' + compCount + '人</span><br>状态更新：<span style="color:var(--text-tertiary);font-size:12px">' + (a.statusUpdateTime ? a.statusUpdateTime.replace('T',' ').slice(0,16) : '-') + '</span>' + failInfo + '</div><div class="record-actions">' + actions + '</div></div>';
+  }).join('');
+}
+
+// ====== Search Page ======
+let searchHistoryList = [];
+try { searchHistoryList = JSON.parse(localStorage.getItem('vms_search_history') || '[]'); } catch(e) {}
+
+function openSearchPage() {
+  document.getElementById('searchPage').classList.add('active');
+  document.getElementById('searchPageInput').value = '';
+  document.getElementById('searchResults').innerHTML = '';
+  renderSearchHistory();
+  setTimeout(() => document.getElementById('searchPageInput').focus(), 100);
+}
+function closeSearchPage() {
+  document.getElementById('searchPage').classList.remove('active');
+}
+
+function renderSearchHistory() {
+  const box = document.getElementById('searchHistory');
+  if (searchHistoryList.length === 0) { box.innerHTML = ''; return; }
+  let html = '<div class="search-history"><div class="search-history-title">搜索历史</div>';
+  searchHistoryList.forEach(h => {
+    html += '<span class="search-history-tag" onclick="useHistorySearch(\'' + h.replace(/'/g, "\\'") + '\')">' + h + '</span>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function useHistorySearch(keyword) {
+  document.getElementById('searchPageInput').value = keyword;
+  doSearch();
+}
+
+function doSearch() {
+  const keyword = document.getElementById('searchPageInput').value.trim();
+  if (!keyword) return;
+
+  // Save history
+  searchHistoryList = searchHistoryList.filter(h => h !== keyword);
+  searchHistoryList.unshift(keyword);
+  if (searchHistoryList.length > 10) searchHistoryList = searchHistoryList.slice(0, 10);
+  localStorage.setItem('vms_search_history', JSON.stringify(searchHistoryList));
+
+  checkExpired();
+  const allApps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const lower = keyword.toLowerCase();
+
+  // Group matching by visitor (name + phone as unique key)
+  const matched = allApps.filter(a => a.visitorName.toLowerCase().includes(lower) || a.visitorPhone.includes(lower));
+
+  const resultsBox = document.getElementById('searchResults');
+  if (matched.length === 0) {
+    resultsBox.innerHTML = '<div class="empty">未找到相关来访记录</div>';
+    return;
+  }
+
+  // Group by visitor
+  const visitorMap = {};
+  matched.forEach(a => {
+    const key = a.visitorPhone;
+    if (!visitorMap[key]) visitorMap[key] = { name: a.visitorName, phone: a.visitorPhone, apps: [] };
+    visitorMap[key].apps.push(a);
+  });
+
+  let html = '<div class="search-result-section"><div class="search-result-title">找到 ' + matched.length + ' 条记录，共 ' + Object.keys(visitorMap).length + ' 位来访人</div>';
+  Object.values(visitorMap).forEach(v => {
+    const initial = v.name.charAt(0);
+    html += '<div class="search-person-card" onclick="toggleSearchPerson(this)">';
+    html += '<div class="search-person-avatar">' + initial + '</div>';
+    html += '<div class="search-person-info"><div class="search-person-name">' + v.name + '</div><div class="search-person-sub">' + v.phone + '</div></div>';
+    html += '<div class="search-person-count">' + v.apps.length + '条记录</div>';
+    html += '</div>';
+    // Detail records for this visitor
+    html += '<div class="search-person-records" style="display:none">';
+    v.apps.forEach(a => {
+      const compCount = a.companions ? a.companions.length : 0;
+      let actions = '';
+      if (a.status === 'pending_review') {
+        actions = '<button class="action-btn action-success" onclick="openReview(\'' + a.id + '\')">审核</button><button class="action-btn action-outline" onclick="viewDetail(\'' + a.id + '\')">详情</button>';
+      } else {
+        actions = '<button class="action-btn action-outline" onclick="viewDetail(\'' + a.id + '\')">详情</button>';
+      }
+      let failInfo = '';
+      if (a.status === 'review_failed' && a.failReason) failInfo = '<br>拒绝原因：<span style="color:var(--danger)">' + a.failReason + '</span>';
+      html += '<div class="record-card"><div class="record-top"><span class="record-date">' + a.expectedDate + ' ' + (a.timeSlot === 'morning' ? '上午' : '下午') + '</span><span class="record-status status-' + a.status + '">' + STATUS_MAP[a.status] + '</span></div><div class="record-info">来访人：<span>' + a.visitorName + '</span> | 手机号：<span>' + a.visitorPhone + '</span><br>来访目的：<span>' + (a.visitPurpose === '其他' ? a.visitPurposeOther : a.visitPurpose) + '</span> | 同行：<span>' + compCount + '人</span><br>状态更新：<span style="color:var(--text-tertiary);font-size:12px">' + (a.statusUpdateTime ? a.statusUpdateTime.replace('T',' ').slice(0,16) : '-') + '</span>' + failInfo + '</div><div class="record-actions">' + actions + '</div></div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  resultsBox.innerHTML = html;
+  renderSearchHistory();
+}
+
+function toggleSearchPerson(card) {
+  const records = card.nextElementSibling;
+  if (records && records.classList.contains('search-person-records')) {
+    const isOpen = records.style.display !== 'none';
+    records.style.display = isOpen ? 'none' : 'block';
+  }
+}
+
+// ====== Review ======
+function openReview(appId) {
+  reviewingAppId = appId;
+  const app = getApps().find(a => a.id === appId);
+  if (!app) return;
+  document.getElementById('reviewDetail').innerHTML = renderDetailHtml(app);
+  document.getElementById('rejectSection').style.display = 'none';
+  document.getElementById('reviewBtns').style.display = 'flex';
+  document.getElementById('rejectBtns').style.display = 'none';
+  document.getElementById('rejectReason').value = '';
+  document.getElementById('reviewModal').classList.add('show');
+}
+function showRejectInput() {
+  document.getElementById('rejectSection').style.display = 'block';
+  document.getElementById('reviewBtns').style.display = 'none';
+  document.getElementById('rejectBtns').style.display = 'flex';
+}
+function approveApp() {
+  let apps = getApps();
+  const idx = apps.findIndex(a => a.id === reviewingAppId);
+  if (idx >= 0) { apps[idx].status = 'pending_visit'; apps[idx].statusUpdateTime = new Date().toISOString(); setApps(apps); }
+  closeReviewModal();
+  showToast('审核通过', 'success');
+  renderStatusFilter(); renderRecords();
+}
+function confirmReject() {
+  const reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) return showToast('请填写拒绝原因');
+  let apps = getApps();
+  const idx = apps.findIndex(a => a.id === reviewingAppId);
+  if (idx >= 0) { apps[idx].status = 'review_failed'; apps[idx].failReason = reason; apps[idx].statusUpdateTime = new Date().toISOString(); setApps(apps); }
+  closeReviewModal();
+  showToast('已拒绝', 'success');
+  renderStatusFilter(); renderRecords();
+}
+function closeReviewModal() { document.getElementById('reviewModal').classList.remove('show'); reviewingAppId = null; }
+
+// ====== Detail ======
+function viewDetail(appId) {
+  const app = getApps().find(a => a.id === appId);
+  if (!app) return;
+  document.getElementById('detailContent').innerHTML = renderDetailHtml(app);
+  document.getElementById('detailModal').classList.add('show');
+}
+function closeDetailModal() { document.getElementById('detailModal').classList.remove('show'); }
+
+function renderDetailHtml(a) {
+  const carCount = a.carPlates ? a.carPlates.length : 0;
+  let html = '<div class="detail-grid"><span class="detail-label">来访人</span><span class="detail-value">' + a.visitorName + '</span><span class="detail-label">访客单位</span><span class="detail-value">' + (a.visitorCompany || '-') + '</span><span class="detail-label">手机号</span><span class="detail-value">' + a.visitorPhone + '</span><span class="detail-label">身份证号</span><span class="detail-value">' + a.visitorIdCard + '</span><span class="detail-label">到访日期</span><span class="detail-value">' + a.expectedDate + ' ' + (a.timeSlot === 'morning' ? '上午' : '下午') + '</span><span class="detail-label">来访目的</span><span class="detail-value">' + (a.visitPurpose === '其他' ? a.visitPurposeOther : a.visitPurpose) + '</span><span class="detail-label">车牌号</span><span class="detail-value">' + (carCount > 0 ? a.carPlates.join('、') : '无') + '</span><span class="detail-label">同行人数</span><span class="detail-value">' + (a.companions ? a.companions.length : 0) + '人</span>';
+  if (a.companions && a.companions.length > 0) {
+    a.companions.forEach((c, i) => { html += '<span class="detail-label">同行人' + (i + 1) + '</span><span class="detail-value">' + c.name + (c.carPlate ? ' | 车牌：' + c.carPlate : '') + '</span>'; });
+  }
+  html += '<span class="detail-label">备注</span><span class="detail-value">' + (a.remark || '-') + '</span><span class="detail-label">状态</span><span class="detail-value"><span class="record-status status-' + a.status + '">' + STATUS_MAP[a.status] + '</span></span><span class="detail-label">状态更新</span><span class="detail-value" style="font-size:12px;color:var(--text-tertiary)">' + (a.statusUpdateTime ? a.statusUpdateTime.replace('T',' ').slice(0,16) : '-') + '</span>';
+  if (a.failReason) html += '<span class="detail-label">拒绝原因</span><span class="detail-value" style="color:var(--danger)">' + a.failReason + '</span>';
+  html += '</div>';
+  return html;
+}
+
+// ====== Toast ======
+function showToast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast' + (type === 'success' ? ' success' : '');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ====== Init ======
+initData();
+const saved = localStorage.getItem('vms_visitee_remember');
+if (saved) {
+  try {
+    const { phone, pwd } = JSON.parse(saved);
+    document.getElementById('loginPhone').value = phone || '';
+    document.getElementById('loginPwd').value = pwd || '';
+    document.getElementById('rememberCheck').checked = true;
+  } catch(e) {}
+}
+</script>
+</body>
+</html>

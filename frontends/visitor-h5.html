@@ -38,7 +38,7 @@ button{cursor:pointer}
 .header-info{display:flex;align-items:center;gap:12px}
 .avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
 .header-phone{font-size:16px;font-weight:500}
-.logout-btn{position:absolute;top:16px;right:16px;font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
+.account-actions{position:absolute;top:16px;right:16px;display:flex;gap:7px}.logout-btn{font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
 .tab-bar{display:flex;background:#fff;position:sticky;top:0;z-index:10;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .tab-item{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s}
 .tab-item.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
@@ -181,7 +181,7 @@ button{cursor:pointer}
         <div style="font-size:12px;opacity:.8;margin-top:2px">访客</div>
       </div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    <div class="account-actions"><button class="logout-btn" onclick="openPhoneModal()">换绑手机号</button><button class="logout-btn" onclick="doLogout()">退出登录</button></div>
   </div>
   <div class="tab-bar">
     <div class="tab-item active" data-tab="apply" onclick="switchTab('apply')">填写申请</div>
@@ -273,6 +273,8 @@ button{cursor:pointer}
   </div>
 </div>
 
+<div class="modal-mask" id="phoneModal"><div class="modal-box"><div class="modal-title">换绑手机号<button class="modal-close" onclick="closePhoneModal()">&times;</button></div><div class="form-group"><label>原手机号</label><input class="form-input" id="phoneOld" disabled></div><div class="form-group"><label>验证码</label><div style="display:flex;gap:8px"><input class="form-input" id="phoneCode" placeholder="请输入验证码"><button class="action-btn action-outline" onclick="sendChangePhoneCode()">获取验证码</button></div></div><div class="form-group"><label>新手机号</label><input class="form-input" id="phoneNew" placeholder="请输入新手机号"></div><button class="login-btn" onclick="saveChangedPhone()">确认修改</button></div></div>
+
 <script>
 // ====== Data Layer ======
 const KEYS = { VISITORS: 'vms_visitors', VISITEES: 'vms_visitees', APPLICATIONS: 'vms_applications', SCAN_RECORDS: 'vms_scan_records', GUARDS: 'vms_guards' };
@@ -295,6 +297,7 @@ function initData() {
   if (!localStorage.getItem(KEYS.APPLICATIONS)) localStorage.setItem(KEYS.APPLICATIONS, '[]');
   if (!localStorage.getItem(KEYS.SCAN_RECORDS)) localStorage.setItem(KEYS.SCAN_RECORDS, '[]');
   if (!localStorage.getItem(KEYS.VISITORS)) localStorage.setItem(KEYS.VISITORS, '[]');
+  const visitors=JSON.parse(localStorage.getItem(KEYS.VISITORS)||'[]');let changed=false;visitors.forEach((v,i)=>{if(!v.identityCode){v.identityCode='VIS-'+String(i+1).padStart(6,'0');changed=true}});if(changed)setVisitors(visitors);
 }
 function getApps() { return JSON.parse(localStorage.getItem(KEYS.APPLICATIONS) || '[]'); }
 function setApps(a) { localStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(a)); }
@@ -326,6 +329,7 @@ let selectedSlot = 'morning';
 let selectedPurpose = '';
 let carSwitchOn = false;
 let editingAppId = null; // for re-edit
+function isCurrentVisitorApp(a){return currentUser&&currentUser.identityCode&&a.visitorIdentityCode?a.visitorIdentityCode===currentUser.identityCode:(a.loginPhone||a.visitorPhone)===currentUser.phone}
 
 // ====== Login ======
 let smsTimer = null, smsCountdown = 0;
@@ -356,10 +360,10 @@ function doLogin() {
   if (!document.getElementById('agreeCheck').checked) return showToast('请阅读并同意协议');
   // Register / login
   let visitors = getVisitors();
-  if (!visitors.find(v => v.phone === phone)) visitors.push({ phone, createTime: new Date().toISOString() });
+  if (!visitors.find(v => v.phone === phone)) visitors.push({ phone, identityCode:'VIS-'+String(visitors.length+1).padStart(6,'0'), createTime: new Date().toISOString() });
   setVisitors(visitors);
   localStorage.setItem('vms_current_visitor', phone);
-  currentUser = { phone };
+  currentUser = visitors.find(v=>v.phone===phone);
   showMain();
 }
 function doLogout() {
@@ -368,6 +372,10 @@ function doLogout() {
   document.getElementById('loginPage').classList.add('active');
   document.getElementById('mainPage').classList.remove('active');
 }
+function openPhoneModal(){document.getElementById('phoneOld').value=currentUser.phone;document.getElementById('phoneCode').value='';document.getElementById('phoneNew').value='';document.getElementById('phoneModal').classList.add('show')}
+function closePhoneModal(){document.getElementById('phoneModal').classList.remove('show')}
+function sendChangePhoneCode(){showToast('验证码已发送：123456','success')}
+function saveChangedPhone(){const oldPhone=currentUser.phone,code=document.getElementById('phoneCode').value.trim(),newPhone=document.getElementById('phoneNew').value.trim();if(code!=='123456')return showToast('验证码错误');if(!/^1\d{10}$/.test(newPhone))return showToast('请输入正确的新手机号');if(newPhone===oldPhone)return showToast('新手机号不能与原手机号相同');const visitors=getVisitors();if(visitors.some(v=>v.phone===newPhone))return showToast('新手机号已被使用');const user=visitors.find(v=>v.identityCode===currentUser.identityCode)||visitors.find(v=>v.phone===oldPhone);user.phone=newPhone;setVisitors(visitors);const records=JSON.parse(localStorage.getItem('vms_phone_change_records')||'[]');records.unshift({identityCode:user.identityCode,role:'访客',oldPhone,newPhone,time:new Date().toISOString()});localStorage.setItem('vms_phone_change_records',JSON.stringify(records));currentUser=user;localStorage.setItem('vms_current_visitor',newPhone);closePhoneModal();showMain();showToast('手机号修改成功，身份编码保持不变','success')}
 
 // ====== Main ======
 function showMain() {
@@ -496,7 +504,7 @@ function submitApplication() {
     let apps = getApps();
     const idx = apps.findIndex(a => a.id === editingAppId);
     if (idx >= 0) {
-      apps[idx] = { ...apps[idx], loginPhone: currentUser.phone, visitorName: name, visitorCompany: company, visitorPhone: phone, visitorIdCard: idCard, expectedDate: date, timeSlot: selectedSlot, visiteeName: visiteeName.split('（')[0], visiteePhone, visiteeDept: visiteeName.match(/（(.+?)）/)?.[1] || '', visitPurpose: purpose, visitPurposeOther: purposeOther, carPlates, companions, remark, status: 'pending_review', failReason: '', visitTime: '', exitTime: '', statusUpdateTime: new Date().toISOString() };
+      apps[idx] = { ...apps[idx], loginPhone: currentUser.phone, visitorIdentityCode:currentUser.identityCode, visiteeIdentityCode:(getVisitees().find(v=>v.phone===visiteePhone)||{}).identityCode||'', visitorName: name, visitorCompany: company, visitorPhone: phone, visitorIdCard: idCard, expectedDate: date, timeSlot: selectedSlot, visiteeName: visiteeName.split('（')[0], visiteePhone, visiteeDept: visiteeName.match(/（(.+?)）/)?.[1] || '', visitPurpose: purpose, visitPurposeOther: purposeOther, carPlates, companions, remark, status: 'pending_review', failReason: '', visitTime: '', exitTime: '', statusUpdateTime: new Date().toISOString() };
       setApps(apps);
     }
     editingAppId = null;
@@ -504,6 +512,8 @@ function submitApplication() {
     const app = {
       id: 'VA' + Date.now(),
       loginPhone: currentUser.phone,
+      visitorIdentityCode: currentUser.identityCode,
+      visiteeIdentityCode: (getVisitees().find(v=>v.phone===visiteePhone)||{}).identityCode||'',
       visitorName: name,
       visitorCompany: company,
       visitorPhone: phone,
@@ -566,7 +576,7 @@ function initCalendar() {
 function renderCalendar() {
   const box = document.getElementById('calendarBox');
   const today = new Date().toISOString().slice(0, 10);
-  const apps = getApps().filter(a => (a.loginPhone || a.visitorPhone) === currentUser.phone);
+  const apps = getApps().filter(isCurrentVisitorApp);
   const visitDates = {};
   apps.forEach(a => { visitDates[a.expectedDate] = true; });
 
@@ -614,7 +624,7 @@ function selectCalDate(date) { calSelectedDate = date; renderCalendar(); renderR
 const STATUS_MAP = { pending_review: '待审核', review_failed: '审核失败', pending_visit: '待来访', visiting: '来访中', ended: '已结束', expired: '已失效' };
 function renderRecords() {
   checkExpired();
-  let apps = getApps().filter(a => (a.loginPhone || a.visitorPhone) === currentUser.phone);
+  let apps = getApps().filter(isCurrentVisitorApp);
   if (calSelectedDate) apps = apps.filter(a => a.expectedDate === calSelectedDate);
   apps.sort((a, b) => b.expectedDate.localeCompare(a.expectedDate));
 
@@ -797,7 +807,7 @@ function showToast(msg, type) {
 // ====== Init ======
 initData();
 const savedUser = localStorage.getItem('vms_current_visitor');
-if (savedUser) { currentUser = { phone: savedUser }; showMain(); }
+if (savedUser) { currentUser = getVisitors().find(v=>v.phone===savedUser)||{phone:savedUser}; showMain(); }
 </script>
 </body>
 </html>

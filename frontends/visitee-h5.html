@@ -164,7 +164,7 @@ textarea.form-input{height:80px;padding:8px 12px;resize:vertical}
         <div class="header-dept" id="headerDept"></div>
       </div>
     </div>
-    <div class="account-actions"><button class="logout-btn" onclick="openPasswordModal()">修改密码</button><button class="logout-btn" onclick="doLogout()">退出登录</button></div>
+    <div class="account-actions"><button class="logout-btn" onclick="openPhoneModal()">换绑手机号</button><button class="logout-btn" onclick="openPasswordModal()">修改密码</button><button class="logout-btn" onclick="doLogout()">退出登录</button></div>
   </div>
   <div class="search-section">
     <div class="search-bar" onclick="openSearchPage()">
@@ -232,6 +232,7 @@ textarea.form-input{height:80px;padding:8px 12px;resize:vertical}
     <div class="modal-btns"><button class="btn-cancel" onclick="closePasswordModal()">取消</button><button class="btn-approve" onclick="savePassword()">保存</button></div>
   </div>
 </div>
+<div class="modal-mask" id="phoneModal"><div class="modal-box"><div class="modal-title">换绑手机号<button class="modal-close" onclick="closePhoneModal()">&times;</button></div><div class="form-group"><label>原手机号</label><input class="form-input" id="phoneOld" disabled></div><div class="form-group"><label>验证码</label><div style="display:flex;gap:8px"><input class="form-input" id="phoneCode" placeholder="请输入验证码"><button class="btn-approve" onclick="sendChangePhoneCode()">获取验证码</button></div></div><div class="form-group"><label>新手机号</label><input class="form-input" id="phoneNew" placeholder="请输入新手机号"></div><div class="modal-btns"><button class="btn-cancel" onclick="closePhoneModal()">取消</button><button class="btn-approve" onclick="saveChangedPhone()">确认修改</button></div></div></div>
 
 <script>
 // ====== Data Layer ======
@@ -254,6 +255,7 @@ function initData() {
   if (!localStorage.getItem(KEYS.SCAN_RECORDS)) localStorage.setItem(KEYS.SCAN_RECORDS, '[]');
   if (!localStorage.getItem(KEYS.GUARDS)) localStorage.setItem(KEYS.GUARDS, JSON.stringify([{ phone: '13900001001', password: '123456', name: '门卫张' }]));
   if (!localStorage.getItem(KEYS.VISITORS)) localStorage.setItem(KEYS.VISITORS, '[]');
+  const visitees=JSON.parse(localStorage.getItem(KEYS.VISITEES)||'[]');let changed=false;visitees.forEach((v,i)=>{if(!v.identityCode){v.identityCode='EMP-'+String(i+1).padStart(6,'0');changed=true}});if(changed)localStorage.setItem(KEYS.VISITEES,JSON.stringify(visitees));
 }
 function getApps() { return JSON.parse(localStorage.getItem(KEYS.APPLICATIONS) || '[]'); }
 function setApps(a) { localStorage.setItem(KEYS.APPLICATIONS, JSON.stringify(a)); }
@@ -275,6 +277,7 @@ let currentUser = null;
 let calYear, calMonth, calSelectedDate;
 let selectedStatus = '';
 let reviewingAppId = null;
+function isCurrentVisiteeApp(a){return currentUser&&currentUser.identityCode&&a.visiteeIdentityCode?a.visiteeIdentityCode===currentUser.identityCode:a.visiteePhone===currentUser.phone}
 
 // ====== Login ======
 function doLogin() {
@@ -299,6 +302,10 @@ function doLogout() {
 function openPasswordModal(){document.getElementById('oldPassword').value='';document.getElementById('newPassword').value='';document.getElementById('confirmPassword').value='';document.getElementById('passwordModal').classList.add('show')}
 function closePasswordModal(){document.getElementById('passwordModal').classList.remove('show')}
 function savePassword(){const oldPwd=document.getElementById('oldPassword').value,newPwd=document.getElementById('newPassword').value,confirmPwd=document.getElementById('confirmPassword').value;if(oldPwd!==currentUser.password)return showToast('当前密码不正确');if(newPwd.length<6)return showToast('新密码至少6位');if(newPwd!==confirmPwd)return showToast('两次输入的新密码不一致');const visitees=getVisitees(),user=visitees.find(v=>v.phone===currentUser.phone);user.password=newPwd;localStorage.setItem(KEYS.VISITEES,JSON.stringify(visitees));currentUser=user;localStorage.removeItem('vms_visitee_remember');closePasswordModal();showToast('密码修改成功，请使用新密码登录');setTimeout(doLogout,800)}
+function openPhoneModal(){document.getElementById('phoneOld').value=currentUser.phone;document.getElementById('phoneCode').value='';document.getElementById('phoneNew').value='';document.getElementById('phoneModal').classList.add('show')}
+function closePhoneModal(){document.getElementById('phoneModal').classList.remove('show')}
+function sendChangePhoneCode(){showToast('验证码已发送：123456')}
+function saveChangedPhone(){const oldPhone=currentUser.phone,code=document.getElementById('phoneCode').value.trim(),newPhone=document.getElementById('phoneNew').value.trim();if(code!=='123456')return showToast('验证码错误');if(!/^1\d{10}$/.test(newPhone))return showToast('请输入正确的新手机号');if(newPhone===oldPhone)return showToast('新手机号不能与原手机号相同');const users=getVisitees();if(users.some(v=>v.phone===newPhone))return showToast('新手机号已被使用');const user=users.find(v=>v.identityCode===currentUser.identityCode)||users.find(v=>v.phone===oldPhone);user.phone=newPhone;localStorage.setItem(KEYS.VISITEES,JSON.stringify(users));const records=JSON.parse(localStorage.getItem('vms_phone_change_records')||'[]');records.unshift({identityCode:user.identityCode,role:'员工',oldPhone,newPhone,time:new Date().toISOString()});localStorage.setItem('vms_phone_change_records',JSON.stringify(records));currentUser=user;localStorage.removeItem('vms_visitee_remember');closePhoneModal();showMain();showToast('手机号修改成功，身份编码保持不变')}
 
 // ====== Main ======
 function showMain() {
@@ -319,7 +326,7 @@ function showMain() {
 function renderCalendar() {
   const box = document.getElementById('calendarBox');
   const today = new Date().toISOString().slice(0, 10);
-  const apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const apps = getApps().filter(isCurrentVisiteeApp);
   const visitDates = {};
   apps.forEach(a => { visitDates[a.expectedDate] = true; });
 
@@ -359,7 +366,7 @@ function selectCalDate(date) { calSelectedDate = date; renderCalendar(); renderR
 // ====== Status Filter ======
 function renderStatusFilter() {
   checkExpired();
-  const apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const apps = getApps().filter(isCurrentVisiteeApp);
   const counts = {};
   STATUS_LIST.forEach(s => counts[s] = 0);
   apps.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
@@ -375,7 +382,7 @@ function filterStatus(status) { selectedStatus = status; renderStatusFilter(); r
 // ====== Records ======
 function renderRecords() {
   checkExpired();
-  let apps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  let apps = getApps().filter(isCurrentVisiteeApp);
   if (calSelectedDate) apps = apps.filter(a => a.expectedDate === calSelectedDate);
   if (selectedStatus) apps = apps.filter(a => a.status === selectedStatus);
 
@@ -444,7 +451,7 @@ function doSearch() {
   localStorage.setItem('vms_search_history', JSON.stringify(searchHistoryList));
 
   checkExpired();
-  const allApps = getApps().filter(a => a.visiteePhone === currentUser.phone);
+  const allApps = getApps().filter(isCurrentVisiteeApp);
   const lower = keyword.toLowerCase();
 
   // Group matching by visitor (name + phone as unique key)

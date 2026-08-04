@@ -32,7 +32,7 @@ button{cursor:pointer}
 .avatar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
 .header-phone{font-size:16px;font-weight:500}
 .header-role{font-size:12px;opacity:.8;margin-top:2px}
-.logout-btn{margin-left:auto;font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
+.account-actions{margin-left:auto;display:flex;gap:7px}.logout-btn{font-size:12px;background:rgba(255,255,255,.2);color:#fff;padding:4px 12px;border-radius:20px}
 
 /* Module Selection */
 .module-bar{display:flex;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.06)}
@@ -106,6 +106,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);color:#fff;padding:12px 24px;border-radius:6px;font-size:14px;z-index:999;pointer-events:none}
 .toast.success{background:rgba(82,196,26,.9)}
 .toast.error{background:rgba(255,77,79,.9)}
+.modal-mask{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-end;justify-content:center}.modal-mask.show{display:flex}.modal-box{background:#fff;border-radius:12px 12px 0 0;width:100%;max-width:520px;padding:20px 16px 30px}.modal-title{font-size:16px;font-weight:600;text-align:center;margin-bottom:16px;position:relative}.modal-close{position:absolute;right:0;font-size:20px;color:var(--text3)}
 </style>
 </head>
 <body>
@@ -142,7 +143,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
       <div class="header-phone" id="headerPhone"></div>
       <div class="header-role">门卫</div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">退出登录</button>
+    <div class="account-actions"><button class="logout-btn" onclick="openPhoneModal()">换绑手机号</button><button class="logout-btn" onclick="doLogout()">退出登录</button></div>
   </div>
   <div class="module-bar">
     <div class="module-item active" data-mod="scan" onclick="switchModule('scan')">扫码确认</div>
@@ -222,6 +223,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
   </div>
 </div>
 
+<div class="modal-mask" id="phoneModal"><div class="modal-box"><div class="modal-title">换绑手机号<button class="modal-close" onclick="closePhoneModal()">&times;</button></div><div class="form-group"><label>原手机号</label><input class="form-input" id="phoneOld" disabled></div><div class="form-group"><label>验证码</label><div style="display:flex;gap:8px"><input class="form-input" id="phoneCode" placeholder="请输入验证码"><button class="manual-btn" onclick="sendChangePhoneCode()">获取验证码</button></div></div><div class="form-group"><label>新手机号</label><input class="form-input" id="phoneNew" placeholder="请输入新手机号"></div><button class="login-btn" onclick="saveChangedPhone()">确认修改</button></div></div>
+
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
 // ====== Data Layer ======
@@ -248,6 +251,7 @@ function initData() {
     ]));
   }
   if (!localStorage.getItem(KEYS.VISITORS)) localStorage.setItem(KEYS.VISITORS, '[]');
+  const guards=JSON.parse(localStorage.getItem(KEYS.GUARDS)||'[]');let changed=false;guards.forEach((g,i)=>{if(!g.identityCode){g.identityCode='GRD-'+String(i+1).padStart(6,'0');changed=true}});if(changed)localStorage.setItem(KEYS.GUARDS,JSON.stringify(guards));
 }
 
 let currentUser = null;
@@ -273,6 +277,10 @@ function doLogout() {
   document.getElementById('loginPage').classList.add('active');
   document.getElementById('mainPage').classList.remove('active');
 }
+function openPhoneModal(){stopCamera();document.getElementById('phoneOld').value=currentUser.phone;document.getElementById('phoneCode').value='';document.getElementById('phoneNew').value='';document.getElementById('phoneModal').classList.add('show')}
+function closePhoneModal(){document.getElementById('phoneModal').classList.remove('show');startCamera()}
+function sendChangePhoneCode(){showToast('验证码已发送：123456','success')}
+function saveChangedPhone(){const oldPhone=currentUser.phone,code=document.getElementById('phoneCode').value.trim(),newPhone=document.getElementById('phoneNew').value.trim();if(code!=='123456')return showToast('验证码错误','error');if(!/^1\d{10}$/.test(newPhone))return showToast('请输入正确的新手机号','error');if(newPhone===oldPhone)return showToast('新手机号不能与原手机号相同','error');const guards=getGuards();if(guards.some(g=>g.phone===newPhone))return showToast('新手机号已被使用','error');const user=guards.find(g=>g.identityCode===currentUser.identityCode)||guards.find(g=>g.phone===oldPhone);user.phone=newPhone;localStorage.setItem(KEYS.GUARDS,JSON.stringify(guards));const records=JSON.parse(localStorage.getItem('vms_phone_change_records')||'[]');records.unshift({identityCode:user.identityCode,role:'门卫',oldPhone,newPhone,time:new Date().toISOString()});localStorage.setItem('vms_phone_change_records',JSON.stringify(records));currentUser=user;localStorage.removeItem('vms_guard_remember');closePhoneModal();showMain();showToast('手机号修改成功，身份编码保持不变','success')}
 
 // ====== Main ======
 function showMain() {
